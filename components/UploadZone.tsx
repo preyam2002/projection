@@ -89,79 +89,104 @@ export default function UploadZone() {
   );
 
   return (
-    <div className="h-full flex items-center justify-center p-3 sm:p-4 relative overflow-hidden">
-      <div className="w-full max-w-4xl relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-3 text-center"
-        >
-          <div className="mb-1.5 flex justify-center">
+    <div className="h-full flex flex-col p-3 sm:p-4 relative overflow-hidden">
+      <div className="w-full max-w-7xl mx-auto relative z-10 flex flex-col h-full">
+        {/* Centered Title */}
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="mb-2 flex justify-center">
             <Image
               src="/logo.png"
               alt="Seamless Logo"
               width={60}
               height={60}
-              className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16"
+              className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20"
               priority
             />
           </div>
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold mb-1 bg-gradient-to-r from-white via-gray-300 to-white bg-clip-text text-transparent font-poppins leading-none">
+          <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-bold mb-2 bg-gradient-to-r from-white via-gray-300 to-white bg-clip-text text-transparent font-poppins leading-none">
             <ShuffleText text="SEAMLESS" duration={1} delay={0.2} />
           </h1>
-          <p className="text-xs sm:text-sm text-gray-400">
+          <p className="text-sm sm:text-base md:text-lg text-gray-400">
             Where your header and PFP finally meet.
           </p>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          className={`
-            relative border-2 border-dashed rounded-2xl p-4 sm:p-6 md:p-8 text-center
-            transition-all duration-300 cursor-pointer glass
-            ${
-              isDragging
-                ? "border-white scale-105 glow-effect"
-                : "border-gray-700 hover:border-gray-600 animated-border"
-            }
-          `}
-          onClick={() => document.getElementById("file-input")?.click()}
-        >
-          <input
-            id="file-input"
-            type="file"
-            accept="image/*"
-            onChange={handleFileInput}
-            className="hidden"
-          />
+        {/* Two Equal Halves */}
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 lg:gap-6">
+          {/* Left Half - Example Box */}
+          <div className="flex-1 w-full lg:w-1/2 flex flex-col items-center justify-center">
+            <h2 className="text-lg sm:text-xl font-semibold mb-2 text-white text-center">
+              Create seamless X profiles
+            </h2>
+            <p className="text-sm sm:text-base text-gray-300 mb-4 leading-relaxed text-center">
+              Upload an image and easily position it to create a seamless
+              connection between your banner and profile picture.
+            </p>
+            <div className="w-full max-w-2xl">
+              <div className="relative rounded overflow-hidden">
+                <Image
+                  src="/example.png"
+                  alt="Example of seamless Twitter profile"
+                  width={800}
+                  height={450}
+                  className="w-full h-auto"
+                  priority
+                />
+              </div>
+            </div>
+          </div>
 
-          <motion.div
-            animate={{
-              scale: isDragging ? 1.1 : 1,
-              rotate: isDragging ? 5 : 0,
-            }}
-            transition={{ duration: 0.2 }}
-          >
-            {isDragging ? (
-              <Upload className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 mx-auto mb-2 text-white" />
-            ) : (
-              <ImageIcon className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 mx-auto mb-2 text-gray-400" />
-            )}
-          </motion.div>
+          {/* Right Half - Upload Button */}
+          <div className="flex-1 w-full lg:w-1/2 flex flex-col items-center justify-center">
+            <div
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              className={`
+                relative border-2 border-dashed rounded-xl p-6 sm:p-8 text-center
+                transition-all duration-300 cursor-pointer glass w-full max-w-md
+                ${
+                  isDragging
+                    ? "border-white scale-105 glow-effect"
+                    : "border-gray-700 hover:border-gray-600 animated-border"
+                }
+              `}
+              onClick={() => document.getElementById("file-input")?.click()}
+            >
+              <input
+                id="file-input"
+                type="file"
+                accept="image/*"
+                onChange={handleFileInput}
+                className="hidden"
+              />
 
-          <h2 className="text-lg sm:text-xl font-semibold mb-1 text-white">
-            {isDragging ? "Drop your image here" : "Upload an image"}
-          </h2>
-          <p className="text-xs sm:text-sm text-gray-500 mb-1.5">
-            Drag and drop or click to browse
-          </p>
-          <p className="text-xs text-gray-600">All image formats up to 5MB</p>
-        </motion.div>
+              <motion.div
+                animate={{
+                  scale: isDragging ? 1.1 : 1,
+                  rotate: isDragging ? 5 : 0,
+                }}
+                transition={{ duration: 0.2 }}
+              >
+                {isDragging ? (
+                  <Upload className="w-8 h-8 sm:w-10 sm:h-10 mx-auto mb-3 text-white" />
+                ) : (
+                  <ImageIcon className="w-8 h-8 sm:w-10 sm:h-10 mx-auto mb-3 text-gray-400" />
+                )}
+              </motion.div>
+
+              <h2 className="text-base sm:text-lg font-semibold mb-2 text-white">
+                {isDragging ? "Drop your image here" : "Upload an image"}
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 mb-2">
+                Drag and drop or click to browse
+              </p>
+              <p className="text-xs text-gray-600">
+                All image formats up to 5MB
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

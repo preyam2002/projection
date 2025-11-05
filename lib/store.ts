@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface CropData {
   x: number;
@@ -31,14 +32,28 @@ const initialState = {
   error: null,
 };
 
-export const useEditorStore = create<EditorState>((set) => ({
-  ...initialState,
-  setOriginalImage: (image) => set({ originalImage: image }),
-  setCroppedImage: (image) => set({ croppedImage: image }),
-  setGeneratedHeader: (header) => set({ generatedHeader: header }),
-  setCropData: (data) => set({ cropData: data }),
-  setLoading: (loading) => set({ isLoading: loading }),
-  setError: (error) => set({ error }),
-  reset: () => set(initialState),
-}));
+export const useEditorStore = create<EditorState>()(
+  persist(
+    (set) => ({
+      ...initialState,
+      setOriginalImage: (image) => set({ originalImage: image }),
+      setCroppedImage: (image) => set({ croppedImage: image }),
+      setGeneratedHeader: (header) => set({ generatedHeader: header }),
+      setCropData: (data) => set({ cropData: data }),
+      setLoading: (loading) => set({ isLoading: loading }),
+      setError: (error) => set({ error }),
+      reset: () => set(initialState),
+    }),
+    {
+      name: "editor-storage",
+      // Only persist image-related state, not loading/error states
+      partialize: (state) => ({
+        originalImage: state.originalImage,
+        croppedImage: state.croppedImage,
+        generatedHeader: state.generatedHeader,
+        cropData: state.cropData,
+      }),
+    }
+  )
+);
 

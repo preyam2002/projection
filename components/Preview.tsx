@@ -4,18 +4,17 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { useEditorStore } from "@/lib/store";
+import {
+  TWITTER_BANNER_WIDTH,
+  TWITTER_BANNER_HEIGHT,
+  TWITTER_PFP_SIZE,
+  PROFILE_LEFT,
+  PROFILE_TOP,
+} from "@/lib/constants";
 
 interface PreviewProps {
   onClose: () => void;
 }
-
-// Twitter's exact dimensions
-const TWITTER_BANNER_WIDTH = 1500;
-const TWITTER_BANNER_HEIGHT = 500;
-const TWITTER_PFP_SIZE = 200;
-// Profile picture on LEFT side, half over banner vertically (matching Twitter's actual layout)
-const PROFILE_LEFT = 16; // 16px from left edge like Twitter
-const PROFILE_TOP = TWITTER_BANNER_HEIGHT - TWITTER_PFP_SIZE / 2; // 400px (half over banner)
 
 export default function Preview({ onClose }: PreviewProps) {
   const generatedHeader = useEditorStore((state) => state.generatedHeader);
@@ -73,7 +72,7 @@ export default function Preview({ onClose }: PreviewProps) {
             />
           </div>
 
-          {/* Profile picture - Twitter exact dimensions: 400x400 */}
+          {/* Profile picture - Twitter exact dimensions: 350x350 */}
           <div
             className="absolute rounded-full border-4 border-white overflow-hidden bg-black"
             style={{
@@ -98,4 +97,3 @@ export default function Preview({ onClose }: PreviewProps) {
     </motion.div>
   );
 }
-

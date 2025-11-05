@@ -3,7 +3,15 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import gsap from "gsap";
-import { ZoomIn, ZoomOut, Download, Upload, Copy, Check } from "lucide-react";
+import {
+  ZoomIn,
+  ZoomOut,
+  Download,
+  Upload,
+  Copy,
+  Check,
+  RotateCcw,
+} from "lucide-react";
 import { useEditorStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import {
@@ -22,6 +30,7 @@ import {
 export default function Editor() {
   const router = useRouter();
   const originalImage = useEditorStore((state) => state.originalImage);
+  const setOriginalImage = useEditorStore((state) => state.setOriginalImage);
   const setCroppedImage = useEditorStore((state) => state.setCroppedImage);
   // AI generation - commented out for now
   // const setGeneratedHeader = useEditorStore(
@@ -37,8 +46,12 @@ export default function Editor() {
   const [zoom, setZoom] = useState(1);
   const [imageX, setImageX] = useState(0);
   const [imageY, setImageY] = useState(0);
+  const [initialZoom, setInitialZoom] = useState(1);
+  const [initialImageX, setInitialImageX] = useState(0);
+  const [initialImageY, setInitialImageY] = useState(0);
   // const [showPreview, setShowPreview] = useState(false); // AI generation - commented out
   const [isMounted, setIsMounted] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [lastPointerPos, setLastPointerPos] = useState({ x: 0, y: 0 });
   const [bannerUrl, setBannerUrl] = useState<string>("");
@@ -52,9 +65,18 @@ export default function Editor() {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const downloadBtnRef = useRef<HTMLDivElement>(null);
   const infoBoxRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const hasCheckedRef = useRef<boolean>(false);
 
   useEffect(() => {
     setIsMounted(true);
+    // Wait for zustand persist to hydrate from localStorage
+    // Use a longer timeout to ensure everything is ready
+    const timer = setTimeout(() => {
+      setIsHydrated(true);
+      hasCheckedRef.current = true;
+    }, 200);
+    return () => clearTimeout(timer);
   }, []);
 
   // GSAP entrance animations
@@ -96,8 +118,13 @@ export default function Editor() {
   }, [isMounted, image]);
 
   useEffect(() => {
+    // Wait for hydration before checking originalImage
+    if (!isHydrated || !hasCheckedRef.current) return;
+
+    // Don't redirect - allow user to upload directly on editor page
+    // If no originalImage, just return early - the render will show upload UI
     if (!originalImage) {
-      router.push("/upload");
+      // Explicitly do nothing - show upload UI in render
       return;
     }
 
@@ -105,26 +132,59 @@ export default function Editor() {
     img.onerror = () => {
       console.error("Failed to load image");
       alert("Failed to load image. Please try uploading again.");
-      router.push("/upload");
+      // Don't redirect - allow user to upload again
+      setImage(null);
     };
     img.onload = () => {
       // Validate image dimensions
       if (img.width <= 0 || img.height <= 0) {
         console.error("Invalid image dimensions");
         alert("Invalid image. Please try uploading again.");
-        router.push("/upload");
+        setImage(null);
         return;
       }
       setImage(img);
-      // Set initial zoom to fit banner width
-      const scale = TWITTER_BANNER_WIDTH / img.width;
-      setZoom(scale);
-      // Center the image
-      setImageX(0);
-      setImageY(0);
+      // Calculate zoom to fill banner (cover mode - like CSS object-fit: cover)
+      // Use the larger of width/height ratios to ensure banner is fully filled with no gaps
+      // Calculate zoom based on actual canvas dimensions (TWITTER_BANNER_WIDTH x TWITTER_BANNER_HEIGHT)
+      const widthRatio = TWITTER_BANNER_WIDTH / img.width;
+      const heightRatio = TWITTER_BANNER_HEIGHT / img.height;
+      const calculatedInitialZoom = Math.max(widthRatio, heightRatio);
+      setZoom(calculatedInitialZoom);
+      setInitialZoom(calculatedInitialZoom);
+
+      // Calculate the scaled image dimensions in display space (for UI positioning)
+      const imageDisplayWidth =
+        img.width * calculatedInitialZoom * DISPLAY_SCALE;
+      const imageDisplayHeight =
+        img.height * calculatedInitialZoom * DISPLAY_SCALE;
+
+      // With cover mode, one dimension will match exactly and the other will overflow
+      // Always center the overflow dimension to ensure banner is fully covered
+      // If widthRatio was larger: imageDisplayWidth = DISPLAY_WIDTH, imageDisplayHeight > DISPLAY_HEIGHT -> center Y
+      // If heightRatio was larger: imageDisplayHeight = DISPLAY_HEIGHT, imageDisplayWidth > DISPLAY_WIDTH -> center X
+
+      // Center horizontally (will be 0 if width matches exactly, negative if width overflows)
+      const calculatedInitialX = (DISPLAY_WIDTH - imageDisplayWidth) / 2;
+      // Center vertically (will be 0 if height matches exactly, negative if height overflows)
+      const calculatedInitialY = (DISPLAY_HEIGHT - imageDisplayHeight) / 2;
+
+      setImageX(calculatedInitialX);
+      setImageY(calculatedInitialY);
+      setInitialImageX(calculatedInitialX);
+      setInitialImageY(calculatedInitialY);
     };
     img.src = originalImage;
-  }, [originalImage, router, TWITTER_BANNER_WIDTH]);
+  }, [
+    originalImage,
+    router,
+    isHydrated,
+    TWITTER_BANNER_WIDTH,
+    TWITTER_BANNER_HEIGHT,
+    DISPLAY_SCALE,
+    DISPLAY_WIDTH,
+    DISPLAY_HEIGHT,
+  ]);
 
   // Generate canvases - optimized with RAF
   const generateCanvases = useCallback(() => {
@@ -173,7 +233,7 @@ export default function Editor() {
       return;
     }
 
-    // Create PFP (200x200 circular)
+    // Create PFP (335x335 circular)
     const pfpCanvas = document.createElement("canvas");
     pfpCanvas.width = TWITTER_PFP_SIZE;
     pfpCanvas.height = TWITTER_PFP_SIZE;
@@ -201,12 +261,11 @@ export default function Editor() {
     pfpCtx.clip();
 
     // Calculate PFP position in banner canvas
-    // PFP circle center is at (PROFILE_LEFT + TWITTER_PFP_SIZE/2, PROFILE_TOP + TWITTER_PFP_SIZE/2)
-    const pfpCenterXInBanner = PROFILE_LEFT + TWITTER_PFP_SIZE / 2; // 191px
-    const pfpCenterYInBanner = PROFILE_TOP + TWITTER_PFP_SIZE / 2; // 500px
-
-    // Draw the image such that the PFP center shows the correct part of the banner
-    // Offset the image by: where the image is in banner - where PFP center is in banner + center of PFP canvas
+    // PFP top-left is at (PROFILE_LEFT, PROFILE_TOP) - exact pixel measurement from Twitter
+    // To extract the profile picture, we need to draw the banner image positioned such that
+    // the banner content at (PROFILE_LEFT, PROFILE_TOP) appears at (0, 0) in the PFP canvas
+    // The image is positioned at (canvasImageX, canvasImageY) in the banner canvas
+    // So we draw the image at (canvasImageX - PROFILE_LEFT, canvasImageY - PROFILE_TOP) in PFP canvas
     try {
       pfpCtx.drawImage(
         image,
@@ -214,8 +273,8 @@ export default function Editor() {
         0,
         image.width,
         image.height,
-        canvasImageX - pfpCenterXInBanner + TWITTER_PFP_SIZE / 2,
-        canvasImageY - pfpCenterYInBanner + TWITTER_PFP_SIZE / 2,
+        canvasImageX - PROFILE_LEFT,
+        canvasImageY - PROFILE_TOP,
         image.width * zoom,
         image.height * zoom
       );
@@ -321,41 +380,21 @@ export default function Editor() {
     (e: React.WheelEvent) => {
       e.preventDefault();
 
-      if (!bannerRef.current) return;
+      if (!bannerRef.current || !image) return;
 
       // Get mouse position relative to banner
       const rect = bannerRef.current.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
 
-      // Calculate zoom delta based on deltaMode and device type
-      // deltaMode: 0 = pixels, 1 = lines, 2 = pages
-      let zoomDelta: number;
+      // Simple zoom calculation: scroll up = zoom in, scroll down = zoom out
+      const zoomSpeed = 0.01;
+      const zoomDelta = -e.deltaY * zoomSpeed;
+      const newZoom = Math.max(0.1, Math.min(3, zoom + zoomDelta));
 
-      if (e.deltaMode === 0) {
-        // Pixel mode (trackpad smooth scrolling)
-        // Use a more appropriate multiplier for smooth trackpad gestures
-        zoomDelta = -e.deltaY * 0.002;
-      } else if (e.deltaMode === 1) {
-        // Line mode (mouse wheel)
-        zoomDelta = -e.deltaY * 0.05;
-      } else {
-        // Page mode (rare, but handle it)
-        zoomDelta = -e.deltaY * 0.1;
-      }
-
-      // Handle pinch-to-zoom gestures (ctrlKey + wheel on trackpads)
-      if (e.ctrlKey || e.metaKey) {
-        // Pinch gestures often have larger deltas, adjust accordingly
-        zoomDelta = -e.deltaY * 0.003;
-      }
-
-      const newZoom = Math.max(0.5, Math.min(3, zoom + zoomDelta));
-
-      if (Math.abs(newZoom - zoom) < 0.001) return; // No significant change
+      if (Math.abs(newZoom - zoom) < 0.01) return;
 
       // Calculate the point in the image that the mouse is over (before zoom)
-      // Convert display coordinates to canvas coordinates
       const imagePointX = (mouseX - imageX) / zoom;
       const imagePointY = (mouseY - imageY) / zoom;
 
@@ -367,7 +406,7 @@ export default function Editor() {
       setImageX(newImageX);
       setImageY(newImageY);
     },
-    [zoom, imageX, imageY]
+    [zoom, imageX, imageY, image]
   );
 
   // AI generation - commented out for now
@@ -447,17 +486,141 @@ export default function Editor() {
     setTimeout(() => setCopied(false), 2000);
   }, []);
 
-  if (!isMounted || !image) {
+  const handleChooseAnotherImage = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setZoom(initialZoom);
+    setImageX(initialImageX);
+    setImageY(initialImageY);
+  }, [initialZoom, initialImageX, initialImageY]);
+
+  const handleFileInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (!file.type.startsWith("image/")) {
+        alert("Please upload an image file");
+        return;
+      }
+
+      // Check file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("File size must be less than 5MB");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onerror = () => {
+        alert("Failed to read the file. Please try again.");
+      };
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        if (result) {
+          // Clear previous image data when uploading a new image
+          setCroppedImage(null);
+          setOriginalImage(result);
+          // Zoom and position will be calculated automatically by useEffect
+          // when the image loads to ensure it covers the entire banner
+        } else {
+          alert("Failed to process the image. Please try again.");
+        }
+      };
+      reader.readAsDataURL(file);
+
+      // Reset the input so the same file can be selected again
+      if (e.target) {
+        e.target.value = "";
+      }
+    },
+    [setOriginalImage]
+  );
+
+  if (!isMounted || !isHydrated) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-400 text-lg">Loading...</div>
+      </div>
+    );
+  }
+
+  // Show upload UI if no originalImage (e.g., after page refresh)
+  // Note: originalImage is not persisted to localStorage to avoid quota issues
+  // User needs to re-upload after page refresh
+  if (!originalImage) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center space-y-6">
+          <div>
+            <Image
+              src="/logo.png"
+              alt="Seamless Logo"
+              width={60}
+              height={60}
+              className="w-16 h-16 mx-auto mb-4"
+              priority
+            />
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-gray-300 to-white bg-clip-text text-transparent font-poppins mb-2">
+              SEAMLESS
+            </h1>
+            <p className="text-gray-400 text-sm mb-2">
+              Upload an image to get started
+            </p>
+            <p className="text-gray-500 text-xs mb-6">
+              Images are not saved after page refresh
+            </p>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileInput}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full px-6 py-4 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-3 border border-gray-700 text-white font-semibold"
+          >
+            <Upload className="w-5 h-5" />
+            Choose Image
+          </button>
+          <p className="text-xs text-gray-600">All image formats up to 5MB</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state while image is being loaded
+  if (!image) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-gray-400 text-lg">Loading image...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black flex flex-col lg:flex-row relative overflow-hidden">
-      <div className="flex-1 flex items-center justify-center p-4 lg:p-8 relative z-10">
+    <div className="min-h-screen flex flex-col lg:flex-row relative overflow-hidden">
+      <div className="flex-1 flex flex-col items-center justify-center p-4 lg:p-8 relative z-10">
+        <button
+          onClick={() => router.push("/")}
+          className="mb-8 hover:opacity-80 transition-opacity cursor-pointer flex flex-col items-center"
+          aria-label="Go to homepage"
+        >
+          <Image
+            src="/logo.png"
+            alt="Seamless Logo"
+            width={60}
+            height={60}
+            className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 mb-2"
+            priority
+          />
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-white via-gray-300 to-white bg-clip-text text-transparent font-poppins leading-none">
+            SEAMLESS
+          </h1>
+        </button>
         <div ref={cardRef} className="relative">
           {/* Twitter Profile Preview Card */}
           <div className="glass rounded-2xl overflow-hidden shadow-2xl border border-gray-800">
@@ -544,7 +707,7 @@ export default function Editor() {
               onClick={handleDownloadBanner}
               disabled={!bannerUrl}
               aria-label="Download banner image"
-              className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2 border border-gray-700 hover:scale-105 active:scale-95 transform disabled:opacity-50 disabled:cursor-not-allowed button-glow relative"
+              className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2 border border-gray-700 hover:scale-105 active:scale-95 transform disabled:opacity-50 disabled:cursor-not-allowed relative text-white"
             >
               <span className="relative z-10 flex items-center justify-center gap-2">
                 <Download className="w-5 h-5" />
@@ -555,7 +718,7 @@ export default function Editor() {
               onClick={handleDownloadProfile}
               disabled={!pfpUrl}
               aria-label="Download profile picture"
-              className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2 border border-gray-700 hover:scale-105 active:scale-95 transform disabled:opacity-50 disabled:cursor-not-allowed button-glow relative"
+              className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2 border border-gray-700 hover:scale-105 active:scale-95 transform disabled:opacity-50 disabled:cursor-not-allowed relative text-white"
             >
               <span className="relative z-10 flex items-center justify-center gap-2">
                 <Download className="w-5 h-5" />
@@ -571,9 +734,16 @@ export default function Editor() {
         className="w-full lg:w-[550px] glass border-t lg:border-t-0 lg:border-l border-gray-800 p-4 lg:p-6 flex flex-col gap-2 lg:gap-3 max-h-screen overflow-y-auto relative z-10"
       >
         <div className="space-y-4">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileInput}
+            className="hidden"
+          />
           <button
-            onClick={() => router.push("/")}
-            className="w-full px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2 text-base button-glow relative"
+            onClick={handleChooseAnotherImage}
+            className="w-full px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2 text-base relative text-white"
           >
             <span className="relative z-10 flex items-center justify-center gap-2">
               <Upload className="w-5 h-5" />
@@ -592,7 +762,7 @@ export default function Editor() {
                 </label>
                 <input
                   type="range"
-                  min="0.5"
+                  min="0.1"
                   max="3"
                   step="0.1"
                   value={zoom}
@@ -609,9 +779,9 @@ export default function Editor() {
               <div className="flex gap-2">
                 <button
                   onClick={() =>
-                    setZoom((prevZoom) => Math.max(0.5, prevZoom - 0.1))
+                    setZoom((prevZoom) => Math.max(0.1, prevZoom - 0.1))
                   }
-                  className="flex-1 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2 text-white"
                 >
                   <ZoomOut className="w-5 h-5" />
                 </button>
@@ -619,11 +789,18 @@ export default function Editor() {
                   onClick={() =>
                     setZoom((prevZoom) => Math.min(3, prevZoom + 0.1))
                   }
-                  className="flex-1 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2 text-white"
                 >
                   <ZoomIn className="w-5 h-5" />
                 </button>
               </div>
+              <button
+                onClick={handleReset}
+                className="w-full px-4 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2 text-white"
+              >
+                <RotateCcw className="w-5 h-5" />
+                <span className="font-medium">Reset to Original</span>
+              </button>
               <div className="text-sm text-gray-400 text-center pt-2 border-t border-gray-800">
                 Drag to position • Scroll to zoom
               </div>
@@ -679,9 +856,6 @@ export default function Editor() {
               </h3>
             </div>
             <div className="text-sm text-gray-300 space-y-3 leading-relaxed">
-              <p className="text-gray-300">
-                For better results with reduced black bars, we recommend:
-              </p>
               <ol className="list-decimal list-inside space-y-2.5 text-gray-300 pl-2">
                 <li className="leading-relaxed">
                   Go to{" "}
@@ -708,7 +882,7 @@ export default function Editor() {
                     </span>
                     <button
                       onClick={handleCopyPrompt}
-                      className="absolute top-2 right-2 p-2 bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 transition-colors"
+                      className="absolute top-2 right-2 p-2 bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 transition-colors text-white"
                       aria-label="Copy prompt"
                     >
                       {copied ? (

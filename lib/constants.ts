@@ -1,18 +1,19 @@
 // Twitter's exact dimensions (for export)
 // Official Twitter/X specs:
-// - Header: 1500x500px (3:1 aspect ratio)
-// - Profile: 350x350px recommended (max size)
-// - Profile position: 40px from left, overlaps header bottom by half
+// - Header: 1503x500px (based on actual display measurements)
+// - Profile: 335x335px (based on actual display measurements)
+// - Profile position: 50.2509186351706px from left, 327.16476797658862px from top (exact pixel measurement from HTML)
 
-export const TWITTER_BANNER_WIDTH = 1500;
+export const TWITTER_BANNER_WIDTH = 1503;
 export const TWITTER_BANNER_HEIGHT = 500;
-export const TWITTER_PFP_SIZE = 350; // 350x350 is recommended max
-export const PROFILE_LEFT = 40; // 40px from left edge like Twitter
-export const PROFILE_TOP = TWITTER_BANNER_HEIGHT - TWITTER_PFP_SIZE / 2; // 325px - PFP overlaps by 175px
+export const TWITTER_PFP_SIZE = 335; // Based on actual Twitter display measurements
+export const PROFILE_LEFT = 50.2509186351706; // Adjusted for correct banner width (1503px)
+export const PROFILE_TOP = 327.16476797658862; // Exact pixel measurement from Twitter HTML (from banner top)
+export const PROFILE_BORDER_THICKNESS = 15.050167224080267; // Border thickness in full-size pixels (measured from Twitter)
 
 // Display dimensions (scaled down 50% for UI performance)
-export const DISPLAY_WIDTH = 750;
+export const DISPLAY_WIDTH = 751; // Half of TWITTER_BANNER_WIDTH (1503/2 = 751.5, rounded)
 export const DISPLAY_HEIGHT = 250;
-export const DISPLAY_PFP_SIZE = 175; // Display at 50% scale
-export const DISPLAY_SCALE = DISPLAY_WIDTH / TWITTER_BANNER_WIDTH; // 0.5
+export const DISPLAY_PFP_SIZE = 168; // Half of TWITTER_PFP_SIZE (335/2 = 167.5, rounded)
+export const DISPLAY_SCALE = DISPLAY_WIDTH / TWITTER_BANNER_WIDTH;
 

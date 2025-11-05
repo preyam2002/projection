@@ -15,8 +15,8 @@ interface EditorState {
   isLoading: boolean;
   error: string | null;
   setOriginalImage: (image: string) => void;
-  setCroppedImage: (image: string) => void;
-  setGeneratedHeader: (header: string) => void;
+  setCroppedImage: (image: string | null) => void;
+  setGeneratedHeader: (header: string | null) => void;
   setCropData: (data: CropData) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
@@ -46,14 +46,8 @@ export const useEditorStore = create<EditorState>()(
     }),
     {
       name: "editor-storage",
-      // Only persist image-related state, not loading/error states
-      partialize: (state) => ({
-        originalImage: state.originalImage,
-        croppedImage: state.croppedImage,
-        generatedHeader: state.generatedHeader,
-        cropData: state.cropData,
-      }),
+      // Persist originalImage now that we have 5MB file size limit
+      // This allows images to persist across page refreshes
     }
   )
 );
-

@@ -39,7 +39,7 @@ export default function Preview({ onClose }: PreviewProps) {
           <h2 className="text-2xl font-bold text-white">Preview</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-800 rounded-lg transition-colors text-white"
           >
             <X className="w-5 h-5" />
           </button>
@@ -72,7 +72,7 @@ export default function Preview({ onClose }: PreviewProps) {
             />
           </div>
 
-          {/* Profile picture - Twitter exact dimensions: 350x350 */}
+          {/* Profile picture - Twitter exact dimensions: 335x335 */}
           <div
             className="absolute rounded-full border-4 border-white overflow-hidden bg-black"
             style={{

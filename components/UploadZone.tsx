@@ -11,7 +11,12 @@ import ShuffleText from "@/components/ShuffleText";
 export default function UploadZone() {
   const [isDragging, setIsDragging] = useState(false);
   const router = useRouter();
+  const originalImage = useEditorStore((state) => state.originalImage);
   const setOriginalImage = useEditorStore((state) => state.setOriginalImage);
+  const setCroppedImage = useEditorStore((state) => state.setCroppedImage);
+  const setGeneratedHeader = useEditorStore(
+    (state) => state.setGeneratedHeader
+  );
 
   const handleFile = useCallback(
     (file: File) => {
@@ -27,6 +32,9 @@ export default function UploadZone() {
       reader.onload = (e) => {
         const result = e.target?.result as string;
         if (result) {
+          // Clear previous image data when uploading a new image
+          setCroppedImage(null);
+          setGeneratedHeader(null);
           setOriginalImage(result);
           router.push("/editor");
         } else {
@@ -35,7 +43,7 @@ export default function UploadZone() {
       };
       reader.readAsDataURL(file);
     },
-    [setOriginalImage, router]
+    [setOriginalImage, setCroppedImage, setGeneratedHeader, router]
   );
 
   const handleDrop = useCallback(
@@ -45,9 +53,9 @@ export default function UploadZone() {
 
       const file = e.dataTransfer.files[0];
       if (file) {
-        // Check file size (10MB limit)
-        if (file.size > 10 * 1024 * 1024) {
-          alert("File size must be less than 10MB");
+        // Check file size (5MB limit)
+        if (file.size > 5 * 1024 * 1024) {
+          alert("File size must be less than 5MB");
           return;
         }
         handleFile(file);
@@ -69,9 +77,9 @@ export default function UploadZone() {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
-        // Check file size (10MB limit)
-        if (file.size > 10 * 1024 * 1024) {
-          alert("File size must be less than 10MB");
+        // Check file size (5MB limit)
+        if (file.size > 5 * 1024 * 1024) {
+          alert("File size must be less than 5MB");
           return;
         }
         handleFile(file);
@@ -81,27 +89,27 @@ export default function UploadZone() {
   );
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-8 relative overflow-hidden">
+    <div className="h-full flex items-center justify-center p-3 sm:p-4 relative overflow-hidden">
       <div className="w-full max-w-4xl relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8 text-center"
+          className="mb-3 text-center"
         >
-          <div className="mb-4 flex justify-center">
+          <div className="mb-1.5 flex justify-center">
             <Image
               src="/logo.png"
               alt="Seamless Logo"
-              width={100}
-              height={100}
-              className="w-auto h-auto"
+              width={60}
+              height={60}
+              className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16"
               priority
             />
           </div>
-          <h1 className="text-[10rem] font-bold mb-2 bg-gradient-to-r from-white via-gray-300 to-white bg-clip-text text-transparent font-poppins leading-none">
+          <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold mb-1 bg-gradient-to-r from-white via-gray-300 to-white bg-clip-text text-transparent font-poppins leading-none">
             <ShuffleText text="SEAMLESS" duration={1} delay={0.2} />
           </h1>
-          <p className="text-gray-400">
+          <p className="text-xs sm:text-sm text-gray-400">
             Where your header and PFP finally meet.
           </p>
         </motion.div>
@@ -114,7 +122,7 @@ export default function UploadZone() {
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           className={`
-            relative border-2 border-dashed rounded-2xl p-16 text-center
+            relative border-2 border-dashed rounded-2xl p-4 sm:p-6 md:p-8 text-center
             transition-all duration-300 cursor-pointer glass
             ${
               isDragging
@@ -140,17 +148,19 @@ export default function UploadZone() {
             transition={{ duration: 0.2 }}
           >
             {isDragging ? (
-              <Upload className="w-16 h-16 mx-auto mb-4 text-white" />
+              <Upload className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 mx-auto mb-2 text-white" />
             ) : (
-              <ImageIcon className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+              <ImageIcon className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 mx-auto mb-2 text-gray-400" />
             )}
           </motion.div>
 
-          <h2 className="text-2xl font-semibold mb-2 text-white">
+          <h2 className="text-lg sm:text-xl font-semibold mb-1 text-white">
             {isDragging ? "Drop your image here" : "Upload an image"}
           </h2>
-          <p className="text-gray-500 mb-4">Drag and drop or click to browse</p>
-          <p className="text-sm text-gray-600">PNG, JPG up to 10MB</p>
+          <p className="text-xs sm:text-sm text-gray-500 mb-1.5">
+            Drag and drop or click to browse
+          </p>
+          <p className="text-xs text-gray-600">All image formats up to 5MB</p>
         </motion.div>
       </div>
     </div>

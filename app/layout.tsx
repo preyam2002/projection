@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
 import "pattern.css/dist/pattern.min.css";
 import "./globals.css";
 
@@ -48,6 +49,7 @@ export default function RootLayout({
             </a>
           </footer>
         </div>
+        <Analytics />
       </body>
     </html>
   );

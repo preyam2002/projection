@@ -2,8 +2,6 @@
 
 Create seamless X/Twitter profiles where your header and profile picture flow together perfectly.
 
-![Seamless Banner](https://projection-sable.vercel.app/example.png)
-
 ## What is Seamless?
 
 Seamless is a web tool that helps you create visually stunning X/Twitter profiles by seamlessly connecting your banner and profile picture. Upload any image, position it precisely using our visual editor, and download perfectly sized assets for your profile.
